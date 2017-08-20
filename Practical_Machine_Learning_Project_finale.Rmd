@@ -1,0 +1,120 @@
+---
+title: "Practical_Machine Learning Project"
+author: "Dahj Muwawa"
+date: "August 20, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Summary Of the Output
+
+The datasets provided for the project has been downloaded, read, cleaned and used to build prediction Models. From the training sets, we choose a number of models that we train with our training sets. The best model is then used on the test data and to answer the related Quiz. A quick note: Many fields have missing values and during the data cleaning, some of the fields that are not very important for the prediction are being removed. 
+
+In the processes, we used some Exploratory data analysis by plotting some few graphs to check relationships between different variables and the variations in the data:
+
+## 1. Downloading the Data from the Url
+
+When downloading the data, the directory should be modified to local computer specific directory. 
+
+```{r car}
+traindata="https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+testdata="https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+if(!file.exists("C:/Users/dahj/Downloads/practicalML/pml-training.csv")){
+    download.file(traindata, destfile = "C:/Users/dahj/Downloads/practicalML/pml-training.csv")
+    dateDowloaded=date()}
+if(!file.exists("C:/Users/dahj/Downloads/practicalML/pml-testing.csv")){
+    download.file(testdata, destfile = "C:/Users/dahj/Downloads/practicalML/pml-testing.csv")
+    dateDowloaded=date()}
+```
+
+We can check the directory to ensure that the files have been properly downloaded and are present. Note that we have also attached the time so that we can know in the future the last time we downloaded the files. 
+
+``` {r file checks}
+list.files("C:/Users/dahj/Downloads/practicalML")
+
+```
+
+## 2. Reading the Downloaded Datasets. 
+
+``` {r reading data}
+traindf=read.csv("C:/Users/dahj/Downloads/practicalML/pml-training.csv")
+testdf=read.csv("C:/Users/dahj/Downloads/practicalML/pml-testing.csv")
+
+```
+## 3. Loading Libraries and Applying Machine Learning
+
+```{r libraries, include=FALSE}
+library(caret)
+library(randomForest)
+library(rpart)
+library(dplyr)
+library(gbm)
+```
+
+## 4. Checking & Cleaning the Data
+
+First run the r code str(traindf) and str(testdf) to check the size, the fields and the types. We can see after running that there are 19622 obs. of  160 variables. And by checking the columns with NA values. There are lots of columns that have NA values. And there are also lots of columns with no missing values. So in the process we can eliminate the columns with missing values. This reduces the number of variables also. Removing fields that we think are not important for prediction. 
+
+```{r checking & cleaning, include=FALSE}
+trainCl<- traindf %>% select(-X, -cvtd_timestamp, -raw_timestamp_part_2, -raw_timestamp_part_1, -num_window, -starts_with("avg_"), -starts_with("var_"), -starts_with("stddev_"), -starts_with("amplitude_"),-starts_with("kurtosis_"), -starts_with("skewness_"), -new_window, -user_name, -starts_with("max_"), -starts_with("min_"))
+```
+![A view of the data truncated]
+(C:/Users/dahj/Downloads/practicalML/view of data.JPG)
+You can do str(trainCl): Realise that the datanow is clean. With no missing values.  
+
+
+## 5. EDA: Graph Plotting. 
+We plot to check relationship between variables on predictor "classe". Analyse the classes of observation between variables. This also shows variation in the data. 
+```{r plot}
+qplot(total_accel_forearm, total_accel_dumbbell, colour=classe, data=trainCl)
+qplot(total_accel_forearm, total_accel_belt, colour=classe, data=trainCl)
+qplot(total_accel_dumbbell, total_accel_belt, colour=classe, data=trainCl)
+```
+
+### 4.3. Applying Different Models
+We load different models to test the accuracy. Including random forest, regression using decision trees, boosting and linear discriminant Analysis. We start by doing cross validation using K-fold with k=3.
+
+```{r model}
+set.seed(32332)
+trainCl$classe=as.factor(trainCl$classe)
+folds=createFolds(y=trainCl$classe, k=10, list = TRUE, returnTrain = FALSE)
+trainfolds=trainCl[folds$Fold01,]
+```
+
+Running regression with trees
+``` {r rpart}
+modelfit01_rpart=train(classe~., data=trainfolds, method="rpart")
+print(modelfit01_rpart)
+```
+
+Running linear discriminant analysis
+``` {r lda model}
+modelfit01_lda=train(classe~., data=trainfolds, method="lda")
+print(modelfit01_lda)
+
+
+```
+
+Running Random Forest
+```{r random forest}
+  modelfit01_rf=train(classe~., data=trainfolds, method="rf", prox=TRUE)
+ print(modelfit01_rf) 
+```
+
+Running bosting with trees
+```{r boosting with trees}
+modelfit01_gbm=train(classe~., data=trainfolds, method="gbm", verbose=FALSE)
+print(modelfit01_gbm)
+```
+
+The same method can be used to test the models on the second subset of our K-fold output by using Fold02. By doing that we will see that the random forest gives a better accuracy (of 93%) comparing to the other 3. Therefore the out-of-sample error is better than the others. And will be chosen in this exercise. 
+
+## Predicted Values using the Test datasets. 
+We can now apply the Random Forest model to the testing set. 
+```{r predicted values}
+ predictedVal=predict(modelfit01_rf, newdata=testdf)
+print(predictedVal)
+```
